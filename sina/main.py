@@ -1,15 +1,18 @@
+from mongoengine import connect, Q
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 from flask import Flask, request
 from response import *
 from logUtils import *
-import time
+import random
 from multiprocessing import Process
 import json
 import threading
-from dataCleaningUtils import *
+from modelHelper import *
+from sina.models.userRecommenderList import UserRecommenderList
 
 app = Flask(__name__)
+rd = redis.StrictRedis(host="127.0.0.1", port=6379, db=0)
 
 """spiderStatus:
                 1 spider运行中
@@ -43,7 +46,6 @@ def start_spider(spider_name, crawl_num):
     process.start()
 
 
-
 @app.route("/runSpider")
 def run_spider():
     spider_name = request.args.get("spiderName")
@@ -60,20 +62,59 @@ def get_spider_status():
     return success(spider_info)
 
 
-# @app.route("/getSpiderStatus")
-# def spider_status():
-#     spider_name = request.args.get("spiderName")
-#     if spider_name is not None:
-#         spider_info = get_spider_info(spider_name)
-#         if spider_info:
-#             return success(spider_info)
-#         else:
-#             return error(1102, "{} 还没有运行！".format(spider_name))
-#     else:
-#         return error(1101, "缺少spider名称")
+@app.route("/setNewsEmbedding", methods=["POST"])
+def set_news_embedding():
+    titles_obj = json.loads(request.get_data(), encoding="utf-8")
+    titles = []
+    for title_obj in titles_obj:
+        titles.append(title_obj["title"])
+    title_embedding = get_title_embedding(titles)
+    for index in range(len(titles)):
+        news_embedding = NewsEmbedding()
+        news_embedding["doc_id"] = titles_obj[index]["id"]
+        news_embedding["embedding"] = title_embedding[index]
+        news_embedding["create_time"] = titles_obj[index]["createTime"]
+        news_embedding.save()
+
+    return success()
+
+
+@app.route("/setUserRecommenderList", methods=["POST"])
+def set_user_recommender_list():
+    user_info = json.loads(request.get_data(), encoding="utf-8")
+    user_interest_embedding = get_user_interest_embedding(user_info["labels"])
+    user_history_embedding = get_user_history_embedding(user_info["history"])
+
+    news_recommender_list = cal_news_score(user_interest_embedding=user_interest_embedding,
+                                           user_history_embedding=user_history_embedding,
+                                           user_history=user_info["history"])
+    # 将推荐列表存入数据库中
+    user_recommender_list = UserRecommenderList()
+    user_recommender_list["user_id"] = int(user_info["userId"])
+    user_recommender_list["recommender_list"] = news_recommender_list
+    user_recommender_list.save()
+    return success()
+
+
+@app.route("/getSimilarNewsList")
+def get_similar_news_list():
+    doc_id = request.args.get("docId")
+    key = doc_id + "_similar"
+    if rd.exists(key) > 0:
+        print("存在类似")
+        similar_news_list = json.loads(rd.get(key))
+    else:
+        print("不存在类似")
+        similar_news_list = cal_similar_news(doc_id)
+        rd.set(key, json.dumps(similar_news_list), ex=60 * 24)
+    res = []
+    idx = random.sample(range(1, 90), 5)
+    for index in idx:
+        res.append(similar_news_list[index])
+    return success({"similarNews": res})
 
 
 if __name__ == "__main__":
+    model_init()
+    connect("news_recommender")
     app.run()
-    # run_spider()
-#     # start_spider("sina")

@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 class SinaSpider(scrapy.Spider):
     name = 'sina'
-    # allowed_domains = ['news.sina.com.cn', 'comment.sina.com.cn', 'feed.mix.sina.com.cn', 'weibo.cn']
     _headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                       "Chrome/88.0.4324.146 Safari/537.36 ",
@@ -38,12 +37,12 @@ class SinaSpider(scrapy.Spider):
         return urlTemplate
 
     def start_requests(self):
-        CHANNEL_LIST_API = "https://feed.mix.sina.com.cn/api/roll/get?pageid=153&num=5"
+        CHANNEL_LIST_API = "https://feed.mix.sina.com.cn/api/roll/get?pageid=153&num=30"
         channelList = [str(i) for i in range(2510, 2519)]
         channelList.append("2669")
 
         for lid in channelList:
-            for pageNum in range(1, 40):
+            for pageNum in range(1, 5):
                 url = self.generateUrl(CHANNEL_LIST_API, {"lid": lid, "page": pageNum})
                 yield Request(url)
 

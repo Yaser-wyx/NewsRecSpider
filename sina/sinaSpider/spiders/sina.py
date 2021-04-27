@@ -50,7 +50,6 @@ class SinaSpider(scrapy.Spider):
         # 处理channel数据
         content = response.body.decode("utf-8")
         responseData = json.loads(content)
-
         dataList = responseData['result']['data']
         for data in dataList:
             news = NewsItem()
@@ -58,7 +57,6 @@ class SinaSpider(scrapy.Spider):
             queryList = News.objects(Q(doc_id=docId))
             with switch_db(News, "target"):
                 queryList2 = News.objects(Q(doc_id=docId))
-
             if queryList or queryList2:
                 logger.info("docId: {} 已经存在了|news_exist".format(docId))
                 logger.info(data['title'])
@@ -70,11 +68,6 @@ class SinaSpider(scrapy.Spider):
             news['media_name'] = data['media_name']
             news['keywords'] = data['keywords']
             news['create_time'] = int(data['ctime'])
-            commentConfig = data['commentid'].split(":")
-            channel = commentConfig[0]
-            newsId = commentConfig[1]
-            requestUrl = self.COMMENT_API_TEMPLATE.format(channel, newsId)
-            # yield Request(url=requestUrl, callback=self.parseComments, headers=self._headers)
             yield Request(url=news['url'], meta={'item': news}, callback=self.parseNews, headers=self._headers)
 
     def parseComments(self, response):
@@ -170,16 +163,20 @@ class SinaSpider(scrapy.Spider):
         content = response.body.decode("utf-8")
         sel = Selector(text=content)
         logger.info("处理的文章标题为：" + newsItem['title'])
+        # 调用函数来解析HTML网页数据
         contentDict = self.getHtmlAndText(selector=sel)
         newsItem['html_content'] = contentDict["htmlContent"]
         newsItem['text_content'] = contentDict["textContent"]
+        # 提取新闻频道数据
         newsItem['channel_name'] = "".join(sel.xpath("//div[@class='channel-path']/a[1]/text()").extract()).strip()
+        # 提取关键词数据
         keywords = "".join(sel.xpath("//div[@id='keywords']/@data-wbkey").extract()).strip()
         if keywords:
+            # 对关键词拆分
             keywords = keywords.split(",")[:-1]
             newsItem['keywords'] = "".join(map(lambda x: x + " ", keywords))
+        # 提取作者数据
         author = sel.xpath("//span[@data-sudaclick='content_author_p']/text()").extract()
         if author:
             newsItem['author'] = "".join(author).strip()[3:]
-
         yield newsItem

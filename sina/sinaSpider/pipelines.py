@@ -48,15 +48,8 @@ class SaveItems:
             return item
         else:
             return item
-        # logger.info("匹配新闻数据与评论数据成功！")
-        # newsItem['comment_total'] = commentListItem['comment_nums']
-        # newsItem['view_count'] = commentListItem['view_count']
+
         newsModel = News(newsItem)
         newsModel.save()
-        # commentList = commentListItem['comment_list']
-        # for comment in commentList:
-        #     commentModel = Comment(comment)
-        #     commentModel.save()
-
         logger.info(newsModel.title + "|新闻保存成功！|news_save_suc")
         return item

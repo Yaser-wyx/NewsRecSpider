@@ -50,10 +50,14 @@ def load_news_embedding():
     return news_embedding_matrix, news_id2idx, idx2news_id
 
 
-def load_embeddings():
+def load_embeddings(load_embedding):
     """加载词向量以及新闻向量"""
     print("开始加载Embedding数据")
-    word_embedding_matrix, word2idx, idx2word = load_word_embedding()
+    if load_embedding:
+        word_embedding_matrix, word2idx, idx2word = load_word_embedding()
+    else:
+        print("取消加载embedding")
+        word_embedding_matrix, word2idx, idx2word = "", "", ""
     set_val(WORD_EMBEDDING_MATRIX, word_embedding_matrix)
     set_val(WORD2IDX, word2idx)
     set_val(IDX2WORD, idx2word)
@@ -81,14 +85,12 @@ def init_all(load_embedding=True, load_model=True):
     set_val(DICT_PATH, dict_path)
 
     # 加载embedding数据
-    if load_embedding:
-        load_embeddings()
+    load_embeddings(load_embedding)
     # 加载模型数据
-
     load_models(load_model)
     print("初始化完成")
 
 
 if __name__ == '__main__':
-    init_all(load_model=False)
+    init_all(load_model=False, load_embedding=False)
     app.run(port=config["hostPort"])

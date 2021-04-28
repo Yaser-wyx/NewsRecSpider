@@ -1,7 +1,6 @@
 from flask import Flask, request
 from response_entry import *
 from spider_service import *
-import random
 from multiprocessing import Process
 from news_service import *
 
@@ -43,18 +42,6 @@ def set_user_recommender_list():
 
 @app.route("/getSimilarNewsList")
 def get_similar_news_list():
-    pass
-    # doc_id = request.args.get("docId")
-    # key = doc_id + "_similar"
-    # if rd.exists(key) > 0:
-    #     print("存在类似")
-    #     similar_news_list = json.loads(rd.get(key))
-    # else:
-    #     print("不存在类似")
-    #     similar_news_list = cal_similar_news(doc_id)
-    #     rd.set(key, json.dumps(similar_news_list), ex=config["DBConfig"]["redis"]["expires"])
-    # res = []
-    # idx = random.sample(range(1, 30), 5)
-    # for index in idx:
-    #     res.append(similar_news_list[index])
-    # return success({"similarNews": res})
+    doc_id = request.args.get("docId")
+    res = similar_news_list(doc_id)
+    return success({"similarNews": res})

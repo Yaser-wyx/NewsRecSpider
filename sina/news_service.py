@@ -1,9 +1,5 @@
-import time
 
-from common_module import *
-from sina.models.newsEmbedding import NewsEmbedding
 from sina.models.userRecommenderList import UserRecommenderList
-from sina.news_module import NewsUtils
 from recall_module import *
 
 
@@ -22,7 +18,7 @@ def generate_news_embedding(titles_obj):
 
 
 def load_news_embedding_by_K(user_history, k=7):
-    """查询最近七天的新闻embedding数据"""
+    """查询最近七天的新闻embedding数据，去除掉用户已看过的新闻"""
     last_time = int(time.time() - 24 * 3600 * k)
     recent_news = list(NewsEmbedding.objects(create_time__gt=last_time))
     # 去掉用户看过的新闻
@@ -43,14 +39,16 @@ def generate_user_recommender_list(user_info):
     # 使用三路召回
     candidate_news_id_list = multi_recall(user_info, candidate_news_embedding_obj)
     # 读取热门新闻，将热门新闻数据也加入
-    hot_list = rd.get(NEWS_HOT_VAL_LIST_RANKED)
-    if hot_list is not None:
-        hot_news_list = json.loads(rd.get(NEWS_HOT_VAL_LIST_RANKED))
-        hot_news_list = hot_news_list[:min(500, len(hot_news_list))]
+    hot_news_list = rd.lrange(NEWS_HOT_VAL_LIST_RANKED, 0, min(500, rd.llen(NEWS_HOT_VAL_LIST_RANKED)))
+    if hot_news_list is not None:
+        # hot_news_list = json.loads(hot_list)
         candidate_news_id_set = set()
         for news_id in candidate_news_id_list:
             candidate_news_id_set.add(news_id)
-        for hot_news_id in hot_news_list:
+        for hot_news_bytes in hot_news_list:
+            print(type(hot_news_bytes))
+            news_obj = json.loads(str(hot_news_bytes, "utf-8"))
+            hot_news_id = news_obj["docId"]
             if hot_news_id not in candidate_news_id_set:
                 candidate_news_id_list.append(hot_news_id)
 
